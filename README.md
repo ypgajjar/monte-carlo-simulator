@@ -1,70 +1,95 @@
-# Getting Started with Create React App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Monte Carlo Project Risk Simulator 🚧📈
 
-## Available Scripts
+A powerful and intuitive web-based tool for performing **project risk simulations** using **Monte Carlo methods**. 
+This simulator models schedule and cost uncertainties with **various probability distributions**, supports **task dependencies and lags**, and visualizes outputs through **S-curves, Gantt charts**, and **sensitivity analysis**.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 🔧 Key Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- 📋 **Task Modeling** with custom WBS, duration, and cost inputs.
+- 📊 **Distributions Supported**: Normal, Triangular, and PERT for durations and costs.
+- 🔗 **Dependency Types**: FS, SS, FF, SF with lags.
+- 🔁 **Monte Carlo Simulation** with user-defined iterations (e.g., 500, 1000, 10,000).
+- 📈 **Output Visualizations**:
+  - Duration and Cost S-Curves (Cumulative Probability)
+  - Tornado Chart (Sensitivity Analysis)
+  - Criticality Index & Cruciality Metrics
+  - Probabilistic Gantt Chart
+- 🎯 **Confidence Level Analysis** for schedule and cost goals.
+- 📎 Task input sorted by WBS for easy tracking.
+- 💡 All calculations follow AACE standards where applicable.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 🚀 Getting Started
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 📦 Install Dependencies
 
-### `npm run build`
+```bash
+npm install
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 🧪 Run Locally
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm start
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+This will start a development server at [http://localhost:3000](http://localhost:3000)
 
-### `npm run eject`
+### 🛠 Build for Deployment
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+npm run build
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Optional: Deploy using GitHub Pages
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```bash
+npm run deploy
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 📸 Example Use Case
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+| Task Name       | WBS Code | Distribution | Min | Likely/Mean | Max | Cost Min | Cost Likely | Cost Max | Dependency | Type | Lag |
+|----------------|----------|--------------|-----|-------------|-----|----------|--------------|----------|------------|------|-----|
+| Project Start  | 1        | Normal       | –   | 10          | 2   | 100      | 120          | 140      | –          | –    | –   |
+| Design         | 1.1      | Triangular   | 10  | 15          | 25  | 200      | 250          | 300      | Project Start | FS | 0   |
+| Procurement    | 1.2      | Normal       | –   | 12          | 3   | 300      | 320          | 340      | Project Start | SS | 0   |
+| Construction   | 2        | PERT         | 20  | 30          | 50  | 1000     | 1100         | 1200     | Design, Procurement | FS | 0   |
+| Commissioning  | 3        | Triangular   | 3   | 6           | 9   | 150      | 175          | 200      | Construction | FF | 2   |
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## 📊 Example Output Screenshots
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- Probabilistic Gantt Chart
+- Simulation Summary (Mean Duration & Cost)![Output_1](https://github.com/user-attachments/assets/d55f5887-fb42-49ae-8261-5f8111ac0c09)
+- S-Curve for Duration and Cost![Output_2](https://github.com/user-attachments/assets/fba91fa4-79a3-49db-a92b-f00ef857aa49)
+- Sensitivity Analysis (Tornado Chart)![Output_3](https://github.com/user-attachments/assets/3f4cbeb0-a0df-45fb-8e5a-581975dc8d51)
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 📚 Technologies Used
 
-### Making a Progressive Web App
+- ReactJS (UI Framework)
+- Chart.js (Graphs)
+- TailwindCSS (Styling)
+- ReactFlow (Network Diagrams)
+- Math.js (Probability Calculations)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+## 🙌 Acknowledgements
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Inspired by real-world project planning challenges faced in engineering and construction. Built to support transparent risk communication using data-driven simulations.
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## 🔗 License
 
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+MIT License.
