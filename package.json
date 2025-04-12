@@ -15,6 +15,7 @@
     "buffer": "^6.0.3",
     "chart.js": "^4.4.8",
     "crypto-browserify": "^3.12.1",
+    "jstat": "^1.9.6",
     "lucide-react": "^0.487.0",
     "os-browserify": "^0.3.0",
     "path-browserify": "^1.0.1",

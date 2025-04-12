@@ -16,6 +16,7 @@ import {
   TimeScale,
 } from 'chart.js';
 import { Random, MersenneTwister19937 } from 'random-js';
+import { randomPERT } from './helpers';
 import ReactFlow from 'reactflow';
 import 'reactflow/dist/style.css';
 import SimulationResults from './SimulationResults';
@@ -76,50 +77,18 @@ function randomNormal(mean, stdDev) {
   return mean + stdDev * z;
 }
 
-// LogNormal distribution sample using the above normal sample
+
+// Example: Define randomLogNormal based on randomNormal:
 function randomLogNormal(mu, sigma) {
+  // Check for non-negative sigma
   if (sigma < 0) {
-    console.warn("LogNormal sigma cannot be negative. Returning exp(mu).");
+    console.warn("LogNormal sigma cannot be negative, returning exp(mu).");
     return Math.exp(mu);
   }
+  // If sigma is 0, the log-normal value equals exp(mu)
   if (sigma === 0) return Math.exp(mu);
+  // Otherwise, return exp(randomNormal)
   return Math.exp(randomNormal(mu, sigma));
-}
-
-// PERT distribution sample using a Beta distribution approximation
-function randomPERT(min, likely, max, gamma = 4) {
-  if (max === min) return min;
-  if (max < min || likely < min || likely > max) {
-    console.warn("Invalid PERT params, returning likely:", { min, likely, max });
-    return likely;
-  }
-  const range = max - min;
-  const clampedLikely = Math.max(min, Math.min(likely, max));
-  const mu = (min + gamma * clampedLikely + max) / (gamma + 2);
-  let alpha, beta;
-  if (mu === max || clampedLikely === mu) {
-    alpha = gamma + 1;
-    beta = 1;
-  } else if (mu === min) {
-    alpha = 1;
-    beta = gamma + 1;
-  } else {
-    const muMinusMin = mu - min;
-    const maxMinusMu = max - mu;
-    const likelyMinusMu = clampedLikely - mu;
-    if (likelyMinusMu === 0 || muMinusMin === 0 || range === 0) {
-      console.warn("PERT calculation instability, falling back to Triangular.");
-      return randomTriangular(min, clampedLikely, max);
-    }
-    alpha = (muMinusMin * (2 * clampedLikely - min - max)) / (likelyMinusMu * range);
-    beta = (alpha * maxMinusMu) / muMinusMin;
-  }
-  if (!isFinite(alpha) || !isFinite(beta) || alpha <= 0 || beta <= 0) {
-    console.warn(`Invalid Beta params (alpha: ${alpha}, beta: ${beta}), falling back to Triangular.`);
-    return randomTriangular(min, clampedLikely, max);
-  }
-  const betaSample = random.beta(alpha, beta);
-  return min + betaSample * range;
 }
 
 /* =================== HELPER FUNCTION: Percentiles =================== */
@@ -372,84 +341,100 @@ function runMonteCarloSimulation(tasks, numRuns) {
   
   // Array to count how often each task is on the critical path.
   const criticalCounts = tasks.map(() => 0);
+// Main Monte Carlo simulation loop
+for (let i = 0; i < numRuns; i++) {
+  // Log the iteration number for clarity
+  console.log(`--- Simulation Run ${i + 1} ---`);
 
-  // Main Monte Carlo simulation loop
-  for (let i = 0; i < numRuns; i++) {
-    // Sample durations for each task based on its distribution
-    const runDurations = tasks.map(task => {
-      const { distType, duration, normalParams, logNormalParams } = task;
-      try {
-        switch (distType) {
-          case 'Normal':
-            return randomNormal(normalParams?.mean ?? 0, normalParams?.stdDev ?? 0);
-          case 'LogNormal':
-            return randomLogNormal(logNormalParams?.mu ?? 0, logNormalParams?.sigma ?? 0);
-          case 'PERT':
-            return randomPERT(duration?.min ?? 0, duration?.likely ?? 0, duration?.max ?? 0);
-          case 'Triangular':
-          default:
-            return randomTriangular(duration?.min ?? 0, duration?.likely ?? 0, duration?.max ?? 0);
-        }
-      } catch (e) {
-        console.error(`Sampling error for task ${task.name} in run ${i + 1}:`, e);
-        return 0;
+  // Sample durations for each task based on its distribution
+  const runDurations = tasks.map(task => {
+    const { distType, duration, normalParams, logNormalParams } = task;
+
+    // Add debugging specifically for PERT tasks
+    if (distType === 'PERT') {
+      console.log(`Task ${task.name} PERT input:`, {
+        min: duration?.min,
+        likely: duration?.likely,
+        max: duration?.max
+      });
+    }
+
+    try {
+      switch (distType) {
+        case 'Normal':
+          return randomNormal(normalParams?.mean ?? 0, normalParams?.stdDev ?? 0);
+        case 'LogNormal':
+          return randomLogNormal(logNormalParams?.mu ?? 0, logNormalParams?.sigma ?? 0);
+        case 'PERT':
+          const pertValue = randomPERT(duration?.min ?? 0, duration?.likely ?? 0, duration?.max ?? 0);
+          // Log the output of randomPERT for debug purposes
+          console.log(`Task ${task.name} PERT output:`, pertValue);
+          return pertValue;
+        case 'Triangular':
+        default:
+          return randomTriangular(duration?.min ?? 0, duration?.likely ?? 0, duration?.max ?? 0);
+      }
+    } catch (e) {
+      console.error(`Sampling error for task ${task.name} in run ${i + 1}:`, e);
+      return 0;
+    }
+  });
+  
+  // Sample costs for each task using triangular distribution
+  const runCosts = tasks.map(task =>
+    randomTriangular(task.cost?.min ?? 0, task.cost?.likely ?? 0, task.cost?.max ?? 0)
+  );
+  
+  // Record the samples for sensitivity analysis
+  tasks.forEach((_, idx) => {
+    taskDurationSamples[idx].push(runDurations[idx]);
+    taskCostSamples[idx].push(runCosts[idx]);
+  });
+  
+  // Calculate the CPM results based on the sampled durations
+  const cpmResult = calculateCPM(tasks, runDurations);
+  if (cpmResult) {
+    const { totalDuration, criticalPathTasks, taskTimings } = cpmResult;
+    simulationRuns.push({
+      totalDuration,
+      totalCost: runCosts.reduce((s, c) => s + c, 0),
+      criticalPathTasks
+    });
+    
+    // Increment count if a task is on the critical path in this run
+    tasks.forEach((task, idx) => {
+      if (criticalPathTasks.has(task.id)) {
+        criticalCounts[idx] += 1;
       }
     });
     
-    // Sample costs for each task using triangular distribution
-    const runCosts = tasks.map(task =>
-      randomTriangular(task.cost?.min ?? 0, task.cost?.likely ?? 0, task.cost?.max ?? 0)
-    );
-    
-    // Record the samples for sensitivity analysis
-    tasks.forEach((_, idx) => {
-      taskDurationSamples[idx].push(runDurations[idx]);
-      taskCostSamples[idx].push(runCosts[idx]);
+    // Record the individual task timings (start and finish)
+    tasks.forEach(task => {
+      if (allTaskTimings[task.id] && taskTimings[task.id]) {
+        allTaskTimings[task.id].starts.push(taskTimings[task.id].es);
+        allTaskTimings[task.id].finishes.push(taskTimings[task.id].ef);
+      }
     });
-    
-    // Calculate the CPM results based on the sampled durations
-    const cpmResult = calculateCPM(tasks, runDurations);
-    if (cpmResult) {
-      const { totalDuration, criticalPathTasks, taskTimings } = cpmResult;
-      simulationRuns.push({
-        totalDuration,
-        totalCost: runCosts.reduce((s, c) => s + c, 0),
-        criticalPathTasks
-      });
-      
-      // Increment count if a task is on the critical path in this run
-      tasks.forEach((task, idx) => {
-        if (criticalPathTasks.has(task.id)) {
-          criticalCounts[idx] += 1;
-        }
-      });
-      
-      // Record the individual task timings (start and finish)
-      tasks.forEach(task => {
-        if (allTaskTimings[task.id] && taskTimings[task.id]) {
-          allTaskTimings[task.id].starts.push(taskTimings[task.id].es);
-          allTaskTimings[task.id].finishes.push(taskTimings[task.id].ef);
-        }
-      });
-    } else {
-      // If CPM fails (e.g., due to a cycle), remove the last added samples
-      tasks.forEach((_, idx) => {
-        taskDurationSamples[idx].pop();
-        taskCostSamples[idx].pop();
-      });
-    }
+  } else {
+    // If CPM fails (e.g., due to a cycle), remove the last added samples
+    tasks.forEach((_, idx) => {
+      taskDurationSamples[idx].pop();
+      taskCostSamples[idx].pop();
+    });
   }
+}
   
-  const validRuns = simulationRuns.length;
-  if (validRuns === 0) {
-    return {
-      simulationRuns: [],
-      analysis: null,
-      taskDurationSamples: [],
-      taskCostSamples: [],
-      allTaskTimings: {}
-    };
-  }
+const validRuns = simulationRuns.length;
+if (validRuns === 0) {
+  return {
+    simulationRuns: [],
+    analysis: null,
+    taskDurationSamples: [],
+    taskCostSamples: [],
+    allTaskTimings: {}
+  };
+}
+
 
   // Gather overall project duration and cost data
   const totalDurations = simulationRuns.map(r => r.totalDuration);
